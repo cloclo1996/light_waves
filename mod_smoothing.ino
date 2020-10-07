@@ -1,5 +1,4 @@
-
-enum ledStates {INCREASE, DECREASE, STAY}; // Here we make nicknames for the different states our program supports.
+enum ledStates {INCREASE, DECREASE, STAY, OFF}; // Here we make nicknames for the different states our program supports.
 enum ledStates ledState; // We define 'ledState' as type ledStates'
 enum ledStates previousLedState = ledState;
 
@@ -15,7 +14,9 @@ int DISTANCE;
 int DURATION;
 
 const int numReadings = 15;
+const int numAverages = 15;
 
+int readingsAvg[numAverages];
 int readings[numReadings];      // the readings from the input
 int readIndex = 0;              // the index of the current reading
 int total = 0;                  // the running total
@@ -82,6 +83,9 @@ void loop() {
   DURATION = pulseIn(ECHO, HIGH);
   DISTANCE = 0.017 * DURATION;
 
+//================================================
+//              AVERAGE DISTANCE
+//================================================
 
   // subtract the last reading:
   total = total - readings[readIndex];
@@ -101,9 +105,15 @@ void loop() {
     // calculate the average:
     average = total / numReadings;
     DISTANCE = average;
+
+    if(DISTANCE < 0 || brightness < 0){
+      brightness = 0;
+      DISTANCE = 0;
+    }
   
-    brightness = map(average, 300, 0, 0, 255);
-    analogWrite(ledPin, brightness); 
+    brightness = map(average, 200, 0, 0, 255);
+    analogWrite(ledPin, brightness);
+    plot(average,brightness);
     delay(1);        // delay in between reads for stability
 }
 
@@ -118,9 +128,11 @@ void compose() {
   case INCREASE:
    if(readings[0] > readings[2]) {
     brightness = increase_brightness(brightness, 1);
-    plot("INCREASING", brightness);
+    //plot("INCREASING", brightness);
    } else if(readings[0] == readings[2]){
       changeState(STAY);
+    } else if(DISTANCE < 0 || brightness < 0){
+      changeState(OFF);
     } else {
       changeState(DECREASE);
     }
@@ -129,22 +141,37 @@ void compose() {
   case DECREASE:
      if(readings[0] < readings[2]) {
       brightness = decrease_brightness(brightness, 1); 
-      plot("DECREASING", brightness);
+      //plot("DECREASING", brightness);
      } else if(readings[0] == readings[2]){
        changeState(STAY);
-     } else {
+     } else if(DISTANCE < 0 || brightness < 0){
+      changeState(OFF);
+    } else {
       changeState(INCREASE);
      }
      break;
      
    case STAY:
-    plot("STAY", brightness);
+    //plot("STAY", brightness);
     brightness = brightness; 
     if(readings[0] > readings[2]){
       changeState(DECREASE);
     }else if(readings[0] < readings[2]){
       changeState(INCREASE);
+    }else if(DISTANCE < 0 || brightness < 0){
+      changeState(OFF);
     }
     break;
+
+    /*case OFF:
+    brightness = 0;
+    DISTANCE = 0;
+    if(readings[0] < readings[2]){
+      delay(10);
+      changeState(INCREASE);
+    } else if(readings[0] == readings[2]){
+      changeState(STAY);
+    }
+    break;*/
   }
 }
