@@ -7,11 +7,14 @@ unsigned long currentMillis;
 
 int brightness = 0; // our main variable for setting the brightness of the LED
 float velocity = 1.0; // the speed at which we change the brightness.
-int ledPin = 13; // we use pin 9 for PWM
+int ledPin = 9; // we use pin 9 for PWM
 int TRIG = 10;
-int ECO = 11;
+int ECHO = 11;
 int DISTANCE;
 int DURATION;
+int i;
+int distanceArray[20];
+int filteredValue;
 
 int p = 0; // use to keep track how often we plot
 int plotFrequency = 3; // how often we plot, every Nth time.
@@ -21,7 +24,7 @@ void setup() {
   // put your setup code here, to run once:
   pinMode(ledPin, OUTPUT); // set ledPin as an output.
   pinMode(TRIG, OUTPUT);
-  pinMode(ECO, INPUT);
+  pinMode(ECHO, INPUT);
   Serial.begin(9600); // initiate the Serial monitor so we can use the Serial Plotter to graph our patterns
 }
 
@@ -30,15 +33,22 @@ void loop() {
   digitalWrite(TRIG, HIGH);
   compose();
   delay(10);
-  digitalWrite(TRIG, LOW);
-  DURATION = pulseIn(ECO, HIGH);
+  //digitalWrite(TRIG, LOW);
+  DURATION = pulseIn(ECHO, HIGH);
   DISTANCE = DURATION / 58.2;
-  brightness = map(DISTANCE, 200, 0, 0, 255);
-  analogWrite(ledPin, brightness);
+  
+analogWrite(ledPin, brightness);
   currentMillis = millis(); //store the current time since the program started
-  Serial.println(DISTANCE);
-  Serial.println(brightness);
-   
+  for(i = 0; i < 20; i++){
+    if(i <= 20){
+      distanceArray[i] = DISTANCE; 
+    }
+    if (i > 20){
+      distanceArray[i] = distanceArray[i-1];
+    }
+    filteredValue += distanceArray[i];
+  }
+  brightness = map((filteredValue/200), 200, 0, 255, 0);
 }
 
 void compose() {
@@ -49,46 +59,44 @@ void compose() {
   
   switch (ledState){
 
- if (currentMillis - startMillis >= 5000){ //change state after 5 secs by comparing the time elapsed since we last change state
-      
-      }
+  /*if (currentMillis - startMillis >= 5000){ //change state after 5 secs by comparing the time elapsed since we last change state
+      changeState(INCREASE);
+      }*/
   
 
 
   case INCREASE:
-   /*if(brightness < 255) {
-   brightness = increase_brightness(brightness, 1);
-   }*/
+   if(brightness <= 255) {
+    brightness = increase_brightness(brightness, 1);
+   }
 
-    /*plot("INCREASING", brightness);
+   plot("INCREASING", brightness);
         
-    if (DISTANCE >= 40){
+    /*if (DISTANCE >= 40){
       //ledState = WAVE;
       changeState(DECREASE);
       }
 
-     if (DISTANCE <= 15){ 
-      changeState(WAVE);
+    if (DISTANCE <= 15){ 
+      changeState(INCREASE);
       }*/
     break;
    
   case DECREASE:
-     /*if(brightness > 0) {
-   brightness = decrease_brightness(brightness, 1);
-   }
-    plot("DECREASING", brightness);
-      if (DISTANCE <= 41){
-      changeState(INCREASE);
-      if (DISTANCE <= 15){ 
-      changeState(WAVE);
-      }
+     if(brightness > 256) {
+      brightness = decrease_brightness(brightness, 1);
+     }
+     plot("DECREASING", brightness);
+     
+      /*if (DISTANCE <= 41){
+        changeState(INCREASE);
       }*/
      break;
 
-  case WAVE:
+  /*case WAVE:
     plot("WAVE", brightness);
     
-    brightness = sinewave(1000,256,0); // you can tweak the parameters of the sinewave
+    brightness = sinewave(1000,255,0); // you can tweak the parameters of the sinewave
     analogWrite(ledPin, brightness);
     
     if (currentMillis - startMillis >= 5000){ //change state after 5 secs by comparing the time elapsed since we last change state
@@ -96,7 +104,7 @@ void compose() {
       }
     break;
     
-  case STAY:
+ case STAY:
     plot("STAY", brightness);
     brightness = brightness;
     break;
@@ -112,7 +120,7 @@ void compose() {
     if (currentMillis - startMillis >= 1000){
       changeState(INCREASE);
       }
-    break;
+    break;*/
   }
 }
 
@@ -127,10 +135,11 @@ void plot(char *state, int brightness){
     // it will normalize the auto-scaling plotter
 
     if ((p % plotFrequency) == 0){
-      Serial.print(state);
-      Serial.print(", ");
-      Serial.print(brightness);
-      Serial.println(", 0, 300");
+      Serial.println(state);
+      //Serial.print(", ");
+      Serial.println(brightness);
+      //Serial.println(", 0, 300");
+      Serial.println(DISTANCE);
     }
     p++;
   }
